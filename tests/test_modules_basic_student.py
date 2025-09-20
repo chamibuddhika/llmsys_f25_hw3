@@ -60,11 +60,11 @@ def test_embedding_student(batch_size, num_embeddings, seq_len, embedding_dim, b
 @pytest.mark.a2_3
 @pytest.mark.parametrize("backend", _BACKENDS, ids=["CudaKernelOps"])
 def test_dropout_student(backend):
-    np.random.seed(10)
     test_dir = f'./tests/data/dropout'
     result_ = load_numpy_array(os.path.join(test_dir, 'dropout.npy'))
 
     # Dropout ratio 0 means nothing gets deleted 
+    np.random.seed(10)
     data = np.random.randn(10, 10)
     x = minitorch.tensor(data.tolist(), backend=backend)
     layer = minitorch.Dropout(p_dropout=0)
@@ -72,11 +72,13 @@ def test_dropout_student(backend):
     np.testing.assert_allclose(result.to_numpy(), data, atol=1e-5, rtol=1e-5)
 
     # Nothing should be dropped when not training
+    np.random.seed(10)
     layer = minitorch.Dropout(p_dropout=0.5)
     layer.training = False
     result = layer(x)
     np.testing.assert_allclose(result.to_numpy(), data, atol=1e-5, rtol=1e-5)
 
+    np.random.seed(10)
     layer = minitorch.Dropout(p_dropout = 0.5)
     layer.training = True
     result = layer(x)

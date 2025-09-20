@@ -150,12 +150,14 @@ class FeedForward(Module):
             dropout (Dropout): Dropout layer
         """
         ### BEGIN ASSIGN3_3
-        raise NotImplementedError
+        self.linear_in  = Linear(n_embd, middle_dim, bias=bias, backend=backend)
+        self.linear_out = Linear(middle_dim, n_embd, bias=bias, backend=backend)
+        self.dropout    = Dropout(p_dropout)
         ### END ASSIGN3_3
 
     def forward(self, x):
         """
-        Forward pass through feed-forward network with GELU activation and dropout.
+        Forward pass through feed-forward network with  activation and dropout.
         
         Args:
             x (Tensor): Input tensor of shape (batch_size, seq_len, n_embd)
@@ -166,7 +168,8 @@ class FeedForward(Module):
         batch_size, seq_len, n_embd = x.shape
 
         ### BEGIN ASSIGN3_3
-        raise NotImplementedError
+        x = GELU(self.linear_in(x.view(batch_size * seq_len, n_embd)))
+        x = self.dropout(self.linear_out(x)).view(batch_size, seq_len, n_embd)
         ### END ASSIGN3_3
 
         return x

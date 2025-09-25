@@ -72,13 +72,11 @@ def test_dropout_student(backend):
     np.testing.assert_allclose(result.to_numpy(), data, atol=1e-5, rtol=1e-5)
 
     # Nothing should be dropped when not training
-    np.random.seed(10)
     layer = minitorch.Dropout(p_dropout=0.5)
     layer.training = False
     result = layer(x)
     np.testing.assert_allclose(result.to_numpy(), data, atol=1e-5, rtol=1e-5)
 
-    np.random.seed(10)
     layer = minitorch.Dropout(p_dropout = 0.5)
     layer.training = True
     result = layer(x)

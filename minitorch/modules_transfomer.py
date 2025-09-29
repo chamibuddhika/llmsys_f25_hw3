@@ -102,9 +102,9 @@ class MultiHeadAttention(Module):
         v = self._transpose(self.v_projection(x).view(batch_size, seq_len, self.n_head, self.attn_hidden_dim).contiguous(), 1, 2)
         kT = self._transpose(k, -2, -1)
         
-        kT.requires_grad_(True)
-        q.requires_grad_(True)
-        v.requires_grad_(True)
+        # kT.requires_grad_(True)
+        # q.requires_grad_(True)
+        # v.requires_grad_(True)
         ### END ASSIGN3_3
         return q, kT, v
     
@@ -158,7 +158,7 @@ class MultiHeadAttention(Module):
         
         attn = attn.view(batch_size, seq_len, n_embd)
         result = attn.contiguous()
-        result.requires_grad_(True)
+        # result.requires_grad_(True)
         return self.out_projection(result) 
         ### END ASSIGN3_3
 

@@ -298,6 +298,9 @@ class CudaKernelOps(TensorOps):
             b = b.contiguous().view(1, b.shape[0], b.shape[1])
             both_2d += 1
         both_2d = both_2d == 2
+        
+        # print(f'\n[TRACE_DEBUG][matmul] A shape : {a.shape}')
+        # print(f'[TRACE_DEBUG][matmul] B shape : {b.shape}')
 
         ls = list(shape_broadcast(a.shape[:-2], b.shape[:-2]))
         ls.append(a.shape[-2])

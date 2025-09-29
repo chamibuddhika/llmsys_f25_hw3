@@ -1,6 +1,8 @@
 import pytest
 import minitorch
 from minitorch.cuda_kernel_ops import CudaKernelOps
+from minitorch.fast_ops import FastOps
+from minitorch.tensor_ops import SimpleOps 
 
 import numpy as np
 import torch
@@ -30,6 +32,8 @@ def load_numpy_array(arr_path):
 @pytest.mark.parametrize("embedding_dim", [256])
 @pytest.mark.parametrize("backend", _BACKENDS, ids=["CudaKernelOps"])
 def test_embedding_student(batch_size, num_embeddings, seq_len, embedding_dim, backend):
+    # backend = minitorch.TensorBackend(FastOps) 
+
     test_dir = f'./tests/data/embedding'
     test_str = '_'.join(map(str, (batch_size, num_embeddings, seq_len, embedding_dim)))
     
@@ -42,7 +46,7 @@ def test_embedding_student(batch_size, num_embeddings, seq_len, embedding_dim, b
     layer_weight = load_numpy_array(layer_weight_path)
     result_      = load_numpy_array(result_path)
     weight_grad  = load_numpy_array(weight_grad_path)
-
+    
     X = minitorch.tensor_from_numpy(data, backend=backend)
     layer = minitorch.Embedding(num_embeddings=num_embeddings, embedding_dim=embedding_dim, backend=backend)
     layer.weights.value = minitorch.tensor_from_numpy(layer_weight, backend=backend, requires_grad=True)
@@ -60,11 +64,11 @@ def test_embedding_student(batch_size, num_embeddings, seq_len, embedding_dim, b
 @pytest.mark.a2_3
 @pytest.mark.parametrize("backend", _BACKENDS, ids=["CudaKernelOps"])
 def test_dropout_student(backend):
+    np.random.seed(10)
     test_dir = f'./tests/data/dropout'
     result_ = load_numpy_array(os.path.join(test_dir, 'dropout.npy'))
 
     # Dropout ratio 0 means nothing gets deleted 
-    np.random.seed(10)
     data = np.random.randn(10, 10)
     x = minitorch.tensor(data.tolist(), backend=backend)
     layer = minitorch.Dropout(p_dropout=0)
@@ -84,6 +88,25 @@ def test_dropout_student(backend):
 
 
 ################################ LINEAR ########################################
+
+@pytest.mark.parametrize("backend", _BACKENDS, ids=["CudaKernelOps"])
+def test_matmul(backend):
+    backend = minitorch.TensorBackend(CudaKernelOps) 
+
+    x = np.random.rand(64, 256)
+    w = np.random.rand(256, 128)
+    np_res = np.matmul(x, w)
+    
+    # backend = CudaKernelOps
+    
+    cuda_x = minitorch.tensor_from_numpy(x, backend, True)
+    cuda_w = minitorch.tensor_from_numpy(w, backend, True)
+    cuda_res = cuda_x @ cuda_w
+
+    print(f'\n[TRACE_DEBUG][test] np_res = {np_res}')
+    print(f'\n[TRACE_DEBUG][test] cuda_res = {cuda_res.to_numpy()}')
+
+    np.testing.assert_allclose(cuda_res.to_numpy(), np_res, rtol=1e-5,atol=1e-5)
 
 @pytest.mark.a2_3
 @pytest.mark.parametrize("sizes", [(64, 256, 128), (8, 256, 8), (128, 256, 512)])
@@ -117,7 +140,6 @@ def test_linear_student(sizes, bias, backend):
     layer.weights.value = minitorch.tensor_from_numpy(layer_weight, backend, requires_grad=True)
     if bias:
         layer.bias.value = minitorch.tensor_from_numpy(layer_bias, backend, requires_grad=True)
-    
     result = layer(X)
 
     np.testing.assert_allclose(result.to_numpy(), result_, rtol=1e-5,atol=1e-5)

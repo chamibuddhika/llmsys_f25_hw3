@@ -89,6 +89,10 @@ class Tensor:
         global _tensor_count
         _tensor_count += 1
         self.unique_id = _tensor_count
+        
+        if self.unique_id == 206:
+            breakpoint()
+
         assert isinstance(v, TensorData)
         assert backend is not None
         self._tensor = v
@@ -372,6 +376,7 @@ class Tensor:
             x : value to be accumulated
         """
         assert self.is_leaf(), "Only leaf variables can have derivatives."
+        print(f'[TRACE_DEBUG][Tensor] Accumulating grads for leaf node.id : {self.unique_id}')
         if self.grad is None:
             self.grad = Tensor.make(
                 [0] * int(operators.prod(self.shape)), self.shape, backend=self.backend

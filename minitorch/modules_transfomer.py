@@ -1,5 +1,5 @@
 import numpy as np
-from .tensor import tensor, tensor_from_numpy
+from .tensor import tensor, tensor_from_numpy, Tensor
 from .module import Module, Parameter
 from .modules_basic import (
     Embedding,
@@ -45,13 +45,17 @@ class MultiHeadAttention(Module):
         self.attn_hidden_dim = n_embd // n_head
 
         ### BEGIN ASSIGN3_3
-        raise NotImplementedError
-        # self.q_projection = 
-        # self.k_projection = 
-        # self.v_projection = 
-        # self.out_projection = 
-        # self.dropout = 
+        self.q_projection = Linear(self.n_embd, self.n_embd, bias=bias, backend=backend)
+        self.k_projection = Linear(self.n_embd, self.n_embd, bias=bias, backend=backend) 
+        self.v_projection =  Linear(self.n_embd, self.n_embd, bias=bias, backend=backend) 
+        self.out_projection = Linear(self.n_embd, self.n_embd, bias=bias, backend=backend) 
+        self.dropout = Dropout(p_dropout) 
         ### END ASSIGN3_3
+        
+    def _transpose(self, a: Tensor, x, y) -> Tensor:
+        order = list(range(a.dims))
+        order[y], order[x] = order[x], order[y]
+        return a._new(a._tensor.permute(*order))
 
     def create_causal_mask(self, seq_len):
         """
@@ -87,7 +91,20 @@ class MultiHeadAttention(Module):
         """
         batch_size, seq_len, n_embd = x.shape
         ### BEGIN ASSIGN3_3
-        raise NotImplementedError
+        q0 = self.q_projection(x).view(batch_size, seq_len, self.n_head, self.attn_hidden_dim)
+        q0.requires_grad_(True)
+        q1 = q0.contiguous()
+        q1.requires_grad_(True)
+        q = self._transpose(q1, 1, 2)
+
+        k = self._transpose(self.k_projection(x).view(batch_size, seq_len, self.n_head, self.attn_hidden_dim).contiguous(), 1, 2)
+        q = self._transpose(self.q_projection(x).view(batch_size, seq_len, self.n_head, self.attn_hidden_dim).contiguous(), 1, 2)
+        v = self._transpose(self.v_projection(x).view(batch_size, seq_len, self.n_head, self.attn_hidden_dim).contiguous(), 1, 2)
+        kT = self._transpose(k, -2, -1)
+        
+        kT.requires_grad_(True)
+        q.requires_grad_(True)
+        v.requires_grad_(True)
         ### END ASSIGN3_3
         return q, kT, v
     
@@ -110,9 +127,14 @@ class MultiHeadAttention(Module):
         result = None
         
         ### BEGIN ASSIGN3_3
-        raise NotImplementedError
+        attn = (q @ kT ) / np.sqrt(self.attn_hidden_dim)
+        if self.causal:
+           attn = attn + self.create_causal_mask(queries_len)
+        attn = softmax(attn, dim=3)
+        attn = self.dropout(attn)
+        result = attn @ v
         ### END ASSIGN3_3
-
+        
         return result
 
     def forward(self, x):
@@ -127,7 +149,17 @@ class MultiHeadAttention(Module):
         """
         batch_size, seq_len, n_embd = x.shape
         ### BEGIN ASSIGN3_3
-        raise NotImplementedError
+        q, kT, v = self.project_to_query_key_value(x)
+        attn = self.self_attention(q, kT, v)
+        
+        attn.requires_grad_(True)
+        attn = self._transpose(attn, 1, 2)
+        attn = attn.contiguous()
+        
+        attn = attn.view(batch_size, seq_len, n_embd)
+        result = attn.contiguous()
+        result.requires_grad_(True)
+        return self.out_projection(result) 
         ### END ASSIGN3_3
 
 
@@ -150,14 +182,14 @@ class FeedForward(Module):
             dropout (Dropout): Dropout layer
         """
         ### BEGIN ASSIGN3_3
-        self.linear_in  = Linear(n_embd, middle_dim, bias=bias, backend=backend)
-        self.linear_out = Linear(middle_dim, n_embd, bias=bias, backend=backend)
-        self.dropout    = Dropout(p_dropout)
+        self.linear_in =  Linear(n_embd, middle_dim, bias=bias, backend=backend)
+        self.linear_out =  Linear(middle_dim, n_embd, bias=bias, backend=backend)
+        self.dropout = Dropout(p_dropout)
         ### END ASSIGN3_3
 
     def forward(self, x):
         """
-        Forward pass through feed-forward network with  activation and dropout.
+        Forward pass through feed-forward network with GELU activation and dropout.
         
         Args:
             x (Tensor): Input tensor of shape (batch_size, seq_len, n_embd)
@@ -168,8 +200,12 @@ class FeedForward(Module):
         batch_size, seq_len, n_embd = x.shape
 
         ### BEGIN ASSIGN3_3
-        x = GELU(self.linear_in(x.view(batch_size * seq_len, n_embd)))
-        x = self.dropout(self.linear_out(x)).view(batch_size, seq_len, n_embd)
+        x = self.linear_in(x)
+        x = GELU(x)
+        x = self.linear_out(x)
+        x = self.dropout(x)
+        
+        assert x.shape[0] == batch_size and x.shape[1] == seq_len and x.shape[2] == n_embd
         ### END ASSIGN3_3
 
         return x
@@ -196,11 +232,10 @@ class TransformerLayer(Module):
             ff (FeedForward): Feed-forward network layer
         """
         ### BEGIN ASSIGN3_3
-        raise NotImplementedError
-        # self.ln_1 = 
-        # self.ln_2 = 
-        # self.attention = 
-        # self.ff = 
+        self.ln_1 = LayerNorm1d(dim=n_embd, eps=ln_eps, backend=backend) 
+        self.ln_2 = LayerNorm1d(dim=n_embd, eps=ln_eps, backend=backend)
+        self.attention = MultiHeadAttention(n_embd=n_embd, n_head=n_head, p_dropout=p_dropout, bias=bias, backend=backend) 
+        self.ff = FeedForward(n_embd=n_embd, p_dropout=p_dropout, bias=bias, backend=backend) 
         ### END ASSIGN3_3
 
     def forward(self, x):
@@ -215,7 +250,15 @@ class TransformerLayer(Module):
         """
         batch_size, seq_len, n_embd = x.shape
         ### BEGIN YOUR SOLUTION
-        raise NotImplementedError
+        input_1 = x
+        y = self.ln_1(input_1)
+        y = self.attention(y)
+
+        input_2 = y + input_1
+        z = self.ln_2(input_2) 
+        z = self.ff(z)
+        
+        return z + input_2
         ### END YOUR SOLUTION
 
 
@@ -260,16 +303,15 @@ class DecoderLM(Module):
         self.n_embd = n_embd
         self.n_vocab = n_vocab
         ### BEGIN ASSIGN3_3
-        raise NotImplementedError
-        # self.token_embeddings = 
-        # self.position_embeddings = 
-        # self.t_layer_1 = 
-        # self.t_layer_2 = 
-        # self.t_layer_3 = 
-        # self.t_layer_4 = 
-        # self.dropout = 
-        # self.ln = 
-        # self.lm_head = 
+        self.token_embeddings = Embedding(num_embeddings=self.n_vocab, embedding_dim=n_embd, backend=backend)  
+        self.position_embeddings = Embedding(num_embeddings=n_positions, embedding_dim=n_embd, backend=backend) 
+        self.t_layer_1 = TransformerLayer(n_embd=self.n_embd, n_head=n_head, p_dropout=p_dropout, ln_eps=ln_eps, bias=bias, backend=backend) 
+        self.t_layer_2 = TransformerLayer(n_embd=self.n_embd, n_head=n_head, p_dropout=p_dropout, ln_eps=ln_eps, bias=bias, backend=backend) 
+        self.t_layer_3 = TransformerLayer(n_embd=self.n_embd, n_head=n_head, p_dropout=p_dropout, ln_eps=ln_eps, bias=bias, backend=backend) 
+        self.t_layer_4 = TransformerLayer(n_embd=self.n_embd, n_head=n_head, p_dropout=p_dropout, ln_eps=ln_eps, bias=bias, backend=backend) 
+        self.dropout = Dropout(p_dropout)
+        self.ln = LayerNorm1d(dim=self.n_embd, eps=ln_eps, backend=backend) 
+        self.lm_head = Linear(self.n_embd, self.n_vocab, bias=False, backend=backend) 
         ### END ASSIGN3_3
     
     def forward(self, idx):
@@ -286,7 +328,6 @@ class DecoderLM(Module):
         batch_size, seq_len = idx.shape
 
         ### BEGIN ASSIGN3_3
-        raise NotImplementedError
         # 1. Get token embeddings of shape (batch_size, seq_len, n_embd)
         # 2. Create positional embeddings of shape (1, seq_len, n_embd):
         #    - Create position ids tensor [0, 1, 2, ..., seq_len-1] of shape (1, seq_len)
@@ -297,4 +338,22 @@ class DecoderLM(Module):
         # 5. Pass through transformer layers (t_layer_1 to t_layer_4)
         # 6. Apply final layer normalization
         # 7. Project to vocabulary size using lm_head
+        
+        tok_embeddings = self.token_embeddings(idx)
+
+        pos_ids = tensor_from_numpy(np.arange(seq_len).reshape(1, -1), backend=self.backend)
+        pos_embeddings = self.position_embeddings(pos_ids)
+        b, s, e = pos_embeddings.shape
+        assert b == 1 and s == seq_len and e == self.n_embd
+        
+        emb = self.dropout(tok_embeddings + pos_embeddings)
+        
+        l_output = self.t_layer_1(emb)
+        l_output = self.t_layer_2(l_output)
+        l_output = self.t_layer_3(l_output)
+        l_output = self.t_layer_4(l_output)
+        
+        out = self.ln(l_output)
+        return self.lm_head(out)
+        
         ### END ASSIGN3_3

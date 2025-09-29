@@ -304,8 +304,9 @@ def generate(
             # TODO
             # run the model with current token_ids, and predict the next token (gen_id)
             # hint: obtain the logits of next token, and take the argmax.
-            gen_id = 0
-            raise NotImplementedError("Generation Function Not Implemented Yet")
+            model(token_ids)
+            logits = model(idx=token_ids)
+            gen_id = np.argmax(logits[0,-1,:].to_numpy())
             # END ASSIGN3_4
 
             if gen_id == tokenizer.vocab[f'<eos_{tgt_key}>']:

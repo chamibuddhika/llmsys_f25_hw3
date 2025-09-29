@@ -166,7 +166,6 @@ def dropout(input: Tensor, rate: float, ignore: bool = False) -> Tensor:
     drop = rate < r
     return input * drop
 
-
 def layer_norm(input: Tensor, eps: float = 1e-5) -> Tensor:
     # Calculate mean and variance along the last axis (features)
     batch, channel, height, width = input.shape
@@ -211,7 +210,10 @@ def logsumexp(input: Tensor, dim: int) -> Tensor:
             NOTE: minitorch functions/tensor functions typically keep dimensions if you provide a dimensions.
     """  
     ### BEGIN ASSIGN3_1
-    raise NotImplementedError
+    e = input
+    mx = Max.apply(e, tensor([dim]))
+    lse = (e - mx).exp().sum(dim=dim).log() + mx
+    return lse
     ### END ASSIGN3_1
 
 
@@ -226,8 +228,17 @@ def softmax_loss(logits: Tensor, target: Tensor) -> Tensor:
     Returns: 
         loss : (minibatch, )
     """
-    result = None
     ### BEGIN ASSIGN3_1
-    raise NotImplementedError
+    # batch_size, num_classes = logits.shape 
+    # z_y_neg = -(logits * one_hot(target, num_classes=num_classes)) 
+    # lg = logsumexp(logits, dim=1)
+    # result = lg + z_y_neg
+
+    batch_size, num_classes = logits.shape 
+    lg = logsumexp(logits, dim=1)
+    log_probs = logits - lg
+    y = one_hot(target, num_classes=num_classes) 
+    result = -(log_probs * y).sum(dim=1)
+
     ### END ASSIGN3_1
     return result.view(batch_size, )

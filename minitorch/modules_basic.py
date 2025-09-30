@@ -167,7 +167,6 @@ class LayerNorm1d(Module):
         Output: 
             output - Tensor of shape (bs, dim)
         """
-        batch, dim = x.shape
         ### BEGIN ASSIGN3_2
         mean = x.sum(dim=1) / self.dim
         xc = x - mean

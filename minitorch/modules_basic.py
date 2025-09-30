@@ -117,9 +117,18 @@ class Linear(Module):
             output : Tensor of shape (n, out_size)
         """
         ### BEGIN ASSIGN3_2
+        x_3d = (len(x.shape) == 3)
+        b, s, e = None, None, None
+        if x_3d:
+            b, s, e = x.shape
+            x = x.view(x.shape[0] * x.shape[1], x.shape[2]).contiguous()
+            
         out = x @ self.weights.value
         if self.bias:
             out = out + self.bias.value
+            
+        if x_3d:
+            out = out.view(b, s, self.out_size).contiguous()
         return out
         ### END ASSIGN3_2
 

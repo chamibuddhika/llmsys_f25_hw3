@@ -299,9 +299,6 @@ class CudaKernelOps(TensorOps):
             both_2d += 1
         both_2d = both_2d == 2
         
-        # print(f'\n[TRACE_DEBUG][matmul] A shape : {a.shape}')
-        # print(f'[TRACE_DEBUG][matmul] B shape : {b.shape}')
-
         ls = list(shape_broadcast(a.shape[:-2], b.shape[:-2]))
         ls.append(a.shape[-2])
         ls.append(b.shape[-1])
@@ -321,7 +318,7 @@ class CudaKernelOps(TensorOps):
             a = a.contiguous().view(np.prod(a.shape[:-2]), a.shape[-2], a.shape[-1])
         if len(b.shape) > 3:
             b = b.contiguous().view(np.prod(b.shape[:-2]), b.shape[-2], b.shape[-1])
-        
+
         assert a.shape[0] == b.shape[0]
         assert a.shape[0] == out.shape[0]
 

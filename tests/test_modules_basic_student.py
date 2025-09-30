@@ -103,9 +103,6 @@ def test_matmul(backend):
     cuda_w = minitorch.tensor_from_numpy(w, backend, True)
     cuda_res = cuda_x @ cuda_w
 
-    print(f'\n[TRACE_DEBUG][test] np_res = {np_res}')
-    print(f'\n[TRACE_DEBUG][test] cuda_res = {cuda_res.to_numpy()}')
-
     np.testing.assert_allclose(cuda_res.to_numpy(), np_res, rtol=1e-5,atol=1e-5)
 
 @pytest.mark.a2_3

@@ -361,8 +361,6 @@ __global__ void reduceKernel(
     // __shared__ double cache[BLOCK_DIM]; // Uncomment this line if you want to use shared memory to store partial results
     int out_index[MAX_DIMS];
     
-    // printf("[TRACE_DEBUG] In reduceKernel");
-
     /// BEGIN ASSIGN2_3
     /// TODO
     // 1. Define the position of the output element that this thread or this block will write to

@@ -248,7 +248,6 @@ class TransformerLayer(Module):
         Returns:
             Tensor: Output tensor of shape (batch_size, seq_len, n_embd)
         """
-        batch_size, seq_len, n_embd = x.shape
         ### BEGIN YOUR SOLUTION
         input_1 = x
         y = self.ln_1(input_1)
